@@ -99,36 +99,55 @@ ui_print() {
   echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD
 }
 
+# 获取 MODPATH
+. /data/adb/magisk/util_functions.sh
+
 ui_print "*******************************"
 ui_print "  Game Helper Zygisk Module"
 ui_print "*******************************"
+ui_print "  MODPATH: $MODPATH"
 
 ui_print "- Extracting files..."
-unzip -o "$ZIPFILE" 'module.prop' 'customize.sh' 'post-fs-data.sh' 'zygisk/*' -d "$MODPATH" > /dev/null
+mkdir -p "$MODPATH"
+unzip -o "$ZIPFILE" 'module.prop' 'customize.sh' 'post-fs-data.sh' 'zygisk/*' -d "$MODPATH" > /dev/null 2>&1
 
 if [ -f "$MODPATH/module.prop" ]; then
   ui_print "- module.prop OK"
 else
-  ui_print "! Failed to extract module.prop"
+  ui_print "! Extract failed, retrying..."
+  # 备用方案
+  mkdir -p /dev/tmp/install
+  unzip -o "$ZIPFILE" -d /dev/tmp/install > /dev/null 2>&1
+  cp -f /dev/tmp/install/module.prop "$MODPATH/" 2>/dev/null
+  cp -f /dev/tmp/install/customize.sh "$MODPATH/" 2>/dev/null
+  cp -f /dev/tmp/install/post-fs-data.sh "$MODPATH/" 2>/dev/null
+  mkdir -p "$MODPATH/zygisk"
+  cp -f /dev/tmp/install/zygisk/*.so "$MODPATH/zygisk/" 2>/dev/null
+  rm -rf /dev/tmp/install
+fi
+
+if [ -f "$MODPATH/module.prop" ]; then
+  ui_print "- module.prop OK"
+else
+  ui_print "! Failed to install module.prop"
   exit 1
 fi
 
 ui_print "- Setting permissions..."
-set_perm_recursive $MODPATH 0 0 0755 0644
+chmod 644 "$MODPATH/module.prop" 2>/dev/null
+chmod 755 "$MODPATH/zygisk" 2>/dev/null
 
 if [ -f "$MODPATH/zygisk/arm64-v8a.so" ]; then
-  set_perm $MODPATH/zygisk/arm64-v8a.so 0 0 0755
+  chmod 755 "$MODPATH/zygisk/arm64-v8a.so"
   ui_print "- arm64-v8a.so OK"
 fi
 
 if [ -f "$MODPATH/zygisk/armeabi-v7a.so" ]; then
-  set_perm $MODPATH/zygisk/armeabi-v7a.so 0 0 0755
+  chmod 755 "$MODPATH/zygisk/armeabi-v7a.so"
   ui_print "- armeabi-v7a.so OK"
 fi
 
-ui_print "- Done!"
-ui_print " "
-ui_print "Reboot to activate!"
+ui_print "- Done! Reboot to activate."
 ENDOFSCRIPT
 
 chmod 755 "$MODULE_DIR/META-INF/com/google/android/update-binary"
