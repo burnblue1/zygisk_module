@@ -99,43 +99,46 @@ ui_print() {
   echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD
 }
 
-# 获取 MODPATH
-. /data/adb/magisk/util_functions.sh
+# 手动获取 MODPATH（Magisk 会在调用前设置这个环境变量）
+# 如果获取不到就用固定路径
+MODPATH="/data/adb/modules_update/game_helper"
+if [ ! -d "$MODPATH" ]; then
+  MODPATH="/data/adb/modules/game_helper"
+fi
+
+mkdir -p "$MODPATH"
+mkdir -p "$MODPATH/zygisk"
 
 ui_print "*******************************"
 ui_print "  Game Helper Zygisk Module"
 ui_print "*******************************"
-ui_print "  MODPATH: $MODPATH"
 
 ui_print "- Extracting files..."
-mkdir -p "$MODPATH"
-unzip -o "$ZIPFILE" 'module.prop' 'customize.sh' 'post-fs-data.sh' 'zygisk/*' -d "$MODPATH" > /dev/null 2>&1
+unzip -o "$ZIPFILE" 'module.prop' 'customize.sh' 'post-fs-data.sh' 'zygisk/*' -d "$MODPATH" > /dev/null
 
 if [ -f "$MODPATH/module.prop" ]; then
   ui_print "- module.prop OK"
 else
-  ui_print "! Extract failed, retrying..."
-  # 备用方案
-  mkdir -p /dev/tmp/install
-  unzip -o "$ZIPFILE" -d /dev/tmp/install > /dev/null 2>&1
-  cp -f /dev/tmp/install/module.prop "$MODPATH/" 2>/dev/null
-  cp -f /dev/tmp/install/customize.sh "$MODPATH/" 2>/dev/null
-  cp -f /dev/tmp/install/post-fs-data.sh "$MODPATH/" 2>/dev/null
+  ui_print "! module.prop not found, trying alternative path..."
+  MODPATH="/data/adb/modules/game_helper"
   mkdir -p "$MODPATH/zygisk"
-  cp -f /dev/tmp/install/zygisk/*.so "$MODPATH/zygisk/" 2>/dev/null
-  rm -rf /dev/tmp/install
+  unzip -o "$ZIPFILE" 'module.prop' 'customize.sh' 'post-fs-data.sh' 'zygisk/*' -d "$MODPATH" > /dev/null
 fi
 
 if [ -f "$MODPATH/module.prop" ]; then
-  ui_print "- module.prop OK"
+  ui_print "- Files extracted to $MODPATH"
 else
-  ui_print "! Failed to install module.prop"
+  ui_print "! ERROR: Cannot extract module files"
+  ui_print "! ZIPFILE: $ZIPFILE"
   exit 1
 fi
 
+# 设置权限
 ui_print "- Setting permissions..."
-chmod 644 "$MODPATH/module.prop" 2>/dev/null
-chmod 755 "$MODPATH/zygisk" 2>/dev/null
+chmod 644 "$MODPATH/module.prop"
+chmod 644 "$MODPATH/customize.sh" 2>/dev/null
+chmod 644 "$MODPATH/post-fs-data.sh" 2>/dev/null
+chmod 755 "$MODPATH/zygisk"
 
 if [ -f "$MODPATH/zygisk/arm64-v8a.so" ]; then
   chmod 755 "$MODPATH/zygisk/arm64-v8a.so"
