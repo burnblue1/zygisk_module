@@ -45,9 +45,15 @@ EOF
 
 echo "#MAGISK" > "$MODULE/META-INF/com/google/android/updater-script"
 
+# 复制模块文件
 cp module.prop "$MODULE/"
+cp post-fs-data.sh "$MODULE/"
 cp "$OUTPUT/arm64-v8a/libgamehelper.so" "$MODULE/zygisk/arm64-v8a.so"
 cp "$OUTPUT/armeabi-v7a/libgamehelper.so" "$MODULE/zygisk/armeabi-v7a.so"
+
+# KernelSU 需要根目录也有
+cp "$OUTPUT/arm64-v8a/libgamehelper.so" "$MODULE/arm64-v8a.so"
+cp "$OUTPUT/armeabi-v7a/libgamehelper.so" "$MODULE/armeabi-v7a.so"
 
 ZIP="game_helper_zygisk_v1.0.zip"
 rm -f "$ZIP"
