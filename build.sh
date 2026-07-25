@@ -78,10 +78,10 @@ armv7a-linux-androideabi${API}-clang++ \
 echo "arm32 done: $(ls -la $OUTPUT_DIR/armeabi-v7a/libgamehelper.so)"
 
 # ============================================
-# 打包为 Magisk 模块
+# 打包
 # ============================================
 echo ""
-echo "Packaging Magisk module..."
+echo "Packaging module..."
 
 MODULE_DIR="game_helper_zygisk"
 rm -rf "$MODULE_DIR"
@@ -92,62 +92,35 @@ mkdir -p "$MODULE_DIR/zygisk"
 cat > "$MODULE_DIR/META-INF/com/google/android/update-binary" << 'ENDOFSCRIPT'
 #!/sbin/sh
 
+umask 022
+
 OUTFD=$2
 ZIPFILE=$3
 
-ui_print() {
-  echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD
-}
-
-# 手动获取 MODPATH（Magisk 会在调用前设置这个环境变量）
-# 如果获取不到就用固定路径
-MODPATH="/data/adb/modules_update/game_helper"
-if [ ! -d "$MODPATH" ]; then
-  MODPATH="/data/adb/modules/game_helper"
-fi
-
-mkdir -p "$MODPATH"
-mkdir -p "$MODPATH/zygisk"
+ui_print() { echo "$1"; }
 
 ui_print "*******************************"
 ui_print "  Game Helper Zygisk Module"
 ui_print "*******************************"
 
-ui_print "- Extracting files..."
-unzip -o "$ZIPFILE" 'module.prop' 'customize.sh' 'post-fs-data.sh' 'zygisk/*' -d "$MODPATH" > /dev/null
+mount /data 2>/dev/null
 
-if [ -f "$MODPATH/module.prop" ]; then
-  ui_print "- module.prop OK"
+if [ -f /data/adb/magisk/util_functions.sh ]; then
+  . /data/adb/magisk/util_functions.sh
+  install_module
+elif [ -f /data/adb/ksu/util_functions.sh ]; then
+  . /data/adb/ksu/util_functions.sh
+  install_module
 else
-  ui_print "! module.prop not found, trying alternative path..."
-  MODPATH="/data/adb/modules/game_helper"
+  ui_print "- Manual install mode"
+  MODPATH=/data/adb/modules/game_helper
   mkdir -p "$MODPATH/zygisk"
   unzip -o "$ZIPFILE" 'module.prop' 'customize.sh' 'post-fs-data.sh' 'zygisk/*' -d "$MODPATH" > /dev/null
-fi
-
-if [ -f "$MODPATH/module.prop" ]; then
-  ui_print "- Files extracted to $MODPATH"
-else
-  ui_print "! ERROR: Cannot extract module files"
-  ui_print "! ZIPFILE: $ZIPFILE"
-  exit 1
-fi
-
-# 设置权限
-ui_print "- Setting permissions..."
-chmod 644 "$MODPATH/module.prop"
-chmod 644 "$MODPATH/customize.sh" 2>/dev/null
-chmod 644 "$MODPATH/post-fs-data.sh" 2>/dev/null
-chmod 755 "$MODPATH/zygisk"
-
-if [ -f "$MODPATH/zygisk/arm64-v8a.so" ]; then
-  chmod 755 "$MODPATH/zygisk/arm64-v8a.so"
-  ui_print "- arm64-v8a.so OK"
-fi
-
-if [ -f "$MODPATH/zygisk/armeabi-v7a.so" ]; then
-  chmod 755 "$MODPATH/zygisk/armeabi-v7a.so"
-  ui_print "- armeabi-v7a.so OK"
+  chmod 755 "$MODPATH/zygisk"
+  chmod 755 "$MODPATH/zygisk/"*.so 2>/dev/null
+  chmod 755 "$MODPATH/customize.sh" 2>/dev/null
+  chmod 755 "$MODPATH/post-fs-data.sh" 2>/dev/null
+  ui_print "- Installed to $MODPATH"
 fi
 
 ui_print "- Done! Reboot to activate."
@@ -185,9 +158,7 @@ echo ""
 echo "Module structure:"
 find "$MODULE_DIR" -type f | sort
 
-# ============================================
 # 打包 zip
-# ============================================
 ZIP_NAME="game_helper_zygisk_v1.0.zip"
 rm -f "$ZIP_NAME"
 
@@ -211,7 +182,5 @@ echo ""
 echo "File size: $(ls -lh $ZIP_NAME | awk '{print $5}')"
 echo ""
 echo "Install:"
-echo "  1. adb push $ZIP_NAME /sdcard/"
-echo "  2. Magisk -> Modules -> Install from storage"
-echo "  3. Reboot"
-echo "  4. Browser: http://127.0.0.1:27042"
+echo "  KernelSU/Magisk -> Modules -> Install from storage -> Reboot"
+echo "  Browser: http://127.0.0.1:27042"
