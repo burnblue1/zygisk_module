@@ -3,7 +3,7 @@ name: Build Zygisk Module
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
@@ -21,7 +21,6 @@ jobs:
 
       - name: Build
         run: |
-          cd zygisk_module
           chmod +x build.sh
           ./build.sh
 
@@ -29,4 +28,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: game_helper_zygisk
-          path: zygisk_module/game_helper_zygisk_*.zip
+          path: game_helper_zygisk_*.zip
