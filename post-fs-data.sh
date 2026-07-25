@@ -1,3 +1,5 @@
+cat > post-fs-data.sh << 'EOF'
 #!/system/bin/sh
-# 确保目录存在
-mkdir -p /data/adb/modules/game_helper/zygisk 2>/dev/null
+MODDIR=${0%/*}
+export ZYGISK_MODULE_LIBRARY="$MODDIR/zygisk/arm64-v8a.so"
+EOF
