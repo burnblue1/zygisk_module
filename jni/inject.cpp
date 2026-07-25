@@ -1,4 +1,6 @@
 #include "inject.h"
+#include <unistd.h>       
+#include <chrono>
 
 void* wait_for_library(const char* name, int timeout_ms) {
     auto start = std::chrono::steady_clock::now();
