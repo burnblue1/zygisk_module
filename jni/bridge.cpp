@@ -43,7 +43,6 @@ std::string BridgeServer::getJSONString(const std::string& json, const std::stri
     std::string search = "\"" + key + "\":\"";
     size_t pos = json.find(search);
     if (pos == std::string::npos) {
-        // 尝试数字值
         search = "\"" + key + "\":";
         pos = json.find(search);
         if (pos == std::string::npos) return "";
@@ -75,7 +74,6 @@ void BridgeServer::start(int port) {
     setsockopt(server_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     setsockopt(server_fd_, SOL_SOCKET, SO_KEEPALIVE, &opt, sizeof(opt));
     
-    // 设置超时
     struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 0;
@@ -160,20 +158,17 @@ void BridgeServer::serverLoop() {
             continue;
         }
         
-        // 新连接
         if (FD_ISSET(server_fd_, &readfds)) {
             int client = accept(server_fd_, nullptr, nullptr);
             if (client >= 0) {
                 LOGI("New client: %d", client);
                 std::lock_guard<std::mutex> lock(mutex_);
                 client_fds_.push_back(client);
-                // 发送欢迎消息
                 std::string welcome = "{\"type\":\"log\",\"level\":\"INFO\",\"msg\":\"Bridge Server ready\"}\n";
                 write(client, welcome.c_str(), welcome.length());
             }
         }
         
-        // 客户端数据
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = client_fds_.begin();
         while (it != client_fds_.end()) {
@@ -192,7 +187,6 @@ void BridgeServer::serverLoop() {
                 
                 buf[n] = '\0';
                 
-                // 处理 HTTP 请求（浏览器访问）
                 if (strncmp(buf, "GET ", 4) == 0 || strncmp(buf, "POST ", 5) == 0) {
                     handleClient(fd);
                     close(fd);
@@ -200,7 +194,6 @@ void BridgeServer::serverLoop() {
                     continue;
                 }
                 
-                // 处理 TCP JSON 命令（可能包含多条，用 \n 分隔）
                 std::string data(buf);
                 size_t start = 0;
                 size_t end;
@@ -224,7 +217,7 @@ void BridgeServer::serverLoop() {
 }
 
 // ============================================
-// HTTP 处理（内嵌 Web 控制台）
+// HTTP 处理
 // ============================================
 void BridgeServer::handleClient(int client_fd) {
     char buf[65536];
@@ -234,14 +227,11 @@ void BridgeServer::handleClient(int client_fd) {
     
     std::string request(buf);
     
-    // 提取请求路径
     std::string method, path;
     std::istringstream iss(request);
     iss >> method >> path;
     
-    // 路由
     if (path == "/" || path == "/index.html") {
-        // 返回内嵌控制台 HTML
         const char* html = R"HTML(HTTP/1.1 200 OK
 Content-Type: text/html; charset=utf-8
 Connection: close
@@ -273,28 +263,21 @@ button:disabled{opacity:.35}
 input[type=number]{background:#0a0a0f;border:1px solid #2a2a3a;color:#e0e0e0;padding:6px 10px;border-radius:6px;font-family:inherit;font-size:12px;width:70px;text-align:center;outline:none}
 input:focus{border-color:#00d4ff}
 .log-area{background:#06060a;border:1px solid #1e1e2e;border-radius:8px;padding:10px;height:250px;overflow-y:auto;font-size:10px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
-.log-line{padding:1px 0}
 .log-time{color:#555}
-.log-INFO{color:#00ff88}
-.log-WARN{color:#ffaa00}
-.log-ERROR{color:#ff4455}
 .flex{display:flex;align-items:center;gap:8px}
-.spacer{flex:1}
-.badge{display:inline-block;width:8px;height:8px;border-radius:50%;background:#555}
-.badge.on{background:#00ff88;box-shadow:0 0 6px #00ff88}
 </style>
 </head>
 <body>
 
 <div class="header">
   <h1>🎮 游戏辅助控制台</h1>
-  <span>Zygisk Injection · Bridge :27042</span>
+  <span>Zygisk Injection · Port 27042</span>
 </div>
 
 <div class="card">
   <div class="card-title">⚔️ 冰原巨兽 <span class="status" id="st-battle">未加载</span></div>
   <div class="btns">
-    <button onclick="loadMod('auto_battle',this)" id="btn-battle-load">📂 加载</button>
+    <button onclick="loadMod('auto_battle',this)">📂 加载</button>
     <button onclick="cmd('initbattle')">🔧 初始化</button>
     <button class="on" onclick="cmd('startbattle')">▶ 启动</button>
     <button class="danger" onclick="cmd('stopbattle')">■ 停止</button>
@@ -304,7 +287,7 @@ input:focus{border-color:#00d4ff}
 <div class="card">
   <div class="card-title">🐻 巨熊行动 <span class="status" id="st-bear">未加载</span></div>
   <div class="btns">
-    <button onclick="loadMod('auto_bear',this)" id="btn-bear-load">📂 加载</button>
+    <button onclick="loadMod('auto_bear',this)">📂 加载</button>
     <button class="warn" onclick="cmd('createmarch')">🚩 开集结</button>
     <button class="on" onclick="cmd('startauto')">▶ 启动</button>
     <button class="danger" onclick="cmd('stopauto')">■ 停止</button>
@@ -314,7 +297,7 @@ input:focus{border-color:#00d4ff}
 <div class="card">
   <div class="card-title">🏰 自动王城 <span class="status" id="st-attack">未加载</span></div>
   <div class="btns">
-    <button onclick="loadMod('auto_attack',this)" id="btn-attack-load">📂 加载</button>
+    <button onclick="loadMod('auto_attack',this)">📂 加载</button>
     <button onclick="cmd('attackinit')">🔧 初始化</button>
     <button class="on" onclick="cmd('startautoattack')">▶ 启动</button>
     <button class="danger" onclick="cmd('stopautoattack')">■ 停止</button>
@@ -324,7 +307,7 @@ input:focus{border-color:#00d4ff}
 <div class="card">
   <div class="card-title">💊 自动治疗 <span class="status" id="st-heal">未加载</span></div>
   <div class="btns flex">
-    <button onclick="loadMod('auto_heal',this)" id="btn-heal-load">📂 加载</button>
+    <button onclick="loadMod('auto_heal',this)">📂 加载</button>
     <button onclick="cmd('healinit')">🔧 初始化</button>
     <input type="number" id="heal-count" value="50" min="1" max="9999" style="width:55px">
     <button class="on" onclick="cmd('startautoheal',document.getElementById('heal-count').value)">▶ 启动</button>
@@ -335,7 +318,7 @@ input:focus{border-color:#00d4ff}
 <div class="card">
   <div class="card-title">👹 召唤Boss <span class="status" id="st-hunter">未加载</span></div>
   <div class="btns">
-    <button onclick="loadMod('auto_hunter',this)" id="btn-hunter-load">📂 加载</button>
+    <button onclick="loadMod('auto_hunter',this)">📂 加载</button>
     <button class="on" onclick="cmd('starthunter')">▶ 启动</button>
     <button class="danger" onclick="cmd('stophunter')">■ 停止</button>
   </div>
@@ -361,61 +344,39 @@ input:focus{border-color:#00d4ff}
 
 <script>
 var loaded={};
-
-function log(msg,level='INFO'){
+function log(msg,level){
+  level=level||'INFO';
   var el=document.getElementById('log');
   var t=new Date().toLocaleTimeString();
-  el.innerHTML+='<div class="log-line"><span class="log-time">['+t+']</span> <span class="log-'+level+'">'+msg+'</span></div>';
+  el.innerHTML+='<div>['+t+'] '+msg+'</div>';
   el.scrollTop=el.scrollHeight;
 }
-
 async function cmd(name,params){
   try{
-    var r=await fetch('/api/'+name,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({params:params||''})
-    });
+    var r=await fetch('/api/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({params:params||''})});
     var j=await r.json();
-    log('✅ '+name+': '+(j.data||'OK'),j.status=='error'?'ERROR':'INFO');
+    log('OK '+name+': '+(j.data||'OK'));
   }catch(e){
-    log('❌ '+name+': '+e.message,'ERROR');
+    log('ERR '+name+': '+e.message,'ERROR');
   }
 }
-
 async function loadMod(name,btn){
   if(loaded[name]){
     await cmd('unload_module',name);
     loaded[name]=false;
     btn.textContent='📂 加载';
     btn.classList.remove('danger');
-    document.getElementById('st-'+name.split('_')[1]).textContent='未加载';
-    document.getElementById('st-'+name.split('_')[1]).className='status';
     return;
   }
-  btn.textContent='⏳...';
+  btn.textContent='...';
   btn.disabled=true;
   await cmd('load_module',name);
   loaded[name]=true;
   btn.textContent='🗑️ 卸载';
   btn.classList.add('danger');
   btn.disabled=false;
-  var mod=name.split('_')[1]||name;
-  var st=document.getElementById('st-'+mod);
-  if(st){st.textContent='已加载';st.className='status on';}
 }
-
-// 定时拉取日志
-setInterval(async function(){
-  try{
-    var r=await fetch('/api/logs');
-    var j=await r.json();
-    if(j.logs) j.logs.forEach(function(l){log(l.msg,l.level);});
-  }catch(e){}
-},3000);
-
-log('🚀 控制台就绪');
-log('📡 监听 127.0.0.1:27042');
+log('Ready');
 </script>
 </body>
 </html>
@@ -423,10 +384,8 @@ log('📡 监听 127.0.0.1:27042');
         write(client_fd, html, strlen(html));
     }
     else if (path.find("/api/") == 0) {
-        // API 路由
-        std::string api_name = path.substr(5); // 去掉 /api/
+        std::string api_name = path.substr(5);
         
-        // 提取 body
         std::string body;
         size_t body_pos = request.find("\r\n\r\n");
         if (body_pos != std::string::npos) {
@@ -440,7 +399,6 @@ log('📡 监听 127.0.0.1:27042');
         write(client_fd, response.c_str(), response.length());
     }
     else {
-        // 404
         const char* notfound = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nNot Found";
         write(client_fd, notfound, strlen(notfound));
     }
@@ -456,8 +414,6 @@ std::string BridgeServer::processCommand(const std::string& raw_json) {
     if (cmd.empty()) {
         return "{\"status\":\"error\",\"data\":\"empty command\"}";
     }
-    
-    LOGI("Command: %s, params: %s", cmd.c_str(), params.c_str());
     
     auto it = commands_.find(cmd);
     if (it != commands_.end()) {
@@ -476,17 +432,10 @@ std::string BridgeServer::processCommand(const std::string& raw_json) {
     return "{\"status\":\"error\",\"data\":\"Unknown command: " + escapeJSON(cmd) + "\"}";
 }
 
-// ============================================
-// 注册命令
-// ============================================
 void BridgeServer::registerCommand(const std::string& cmd, CommandCallback cb) {
     commands_[cmd] = cb;
-    LOGI("Registered: %s", cmd.c_str());
 }
 
-// ============================================
-// 广播日志
-// ============================================
 void BridgeServer::sendLog(const std::string& level, const std::string& msg) {
     std::ostringstream ss;
     ss << "{\"type\":\"log\",\"level\":\"" << level << "\",\"msg\":\"" << escapeJSON(msg) << "\"}\n";
@@ -507,9 +456,6 @@ void BridgeServer::broadcast(const std::string& data) {
     }
 }
 
-// ============================================
-// Lua 执行器
-// ============================================
 void BridgeServer::setLuaExecutor(std::function<bool(const std::string&)> executor) {
     lua_executor_ = executor;
 }
@@ -523,25 +469,23 @@ bool BridgeServer::execLua(const std::string& code) {
 }
 
 // ============================================
-// 全局辅助函数
+// 全局
 // ============================================
 void start_bridge_server(int port) {
     BridgeServer::getInstance().start(port);
 }
 
-// 存储已加载的模块列表
 static std::vector<std::string> loaded_modules;
 static std::mutex modules_mutex;
 
 void register_all_commands() {
     auto& bridge = BridgeServer::getInstance();
     
-    // ===== 基础命令 =====
-    REGISTER_COMMAND("ping", {
+    bridge.registerCommand("ping", [](const std::string& params) -> std::string {
         return "pong";
     });
     
-    REGISTER_COMMAND("get_status", {
+    bridge.registerCommand("get_status", [](const std::string& params) -> std::string {
         std::lock_guard<std::mutex> lock(modules_mutex);
         std::ostringstream ss;
         ss << "{\"injected\":true,\"modules\":[";
@@ -553,139 +497,127 @@ void register_all_commands() {
         return ss.str();
     });
     
-    // ===== 模块管理 =====
-    REGISTER_COMMAND("load_module", {
+    bridge.registerCommand("load_module", [](const std::string& params) -> std::string {
         std::lock_guard<std::mutex> lock(modules_mutex);
         if (std::find(loaded_modules.begin(), loaded_modules.end(), params) == loaded_modules.end()) {
             loaded_modules.push_back(params);
         }
-        bridge.sendLog("INFO", "Module loaded: " + params);
-        
-        // 执行模块初始化 Lua 代码
-        // bridge.execLua("require('" + params + "')");
-        
+        BridgeServer::getInstance().sendLog("INFO", "Module loaded: " + params);
         return "Module " + params + " loaded";
     });
     
-    REGISTER_COMMAND("unload_module", {
+    bridge.registerCommand("unload_module", [](const std::string& params) -> std::string {
         std::lock_guard<std::mutex> lock(modules_mutex);
         auto it = std::find(loaded_modules.begin(), loaded_modules.end(), params);
         if (it != loaded_modules.end()) {
             loaded_modules.erase(it);
         }
-        bridge.sendLog("INFO", "Module unloaded: " + params);
+        BridgeServer::getInstance().sendLog("INFO", "Module unloaded: " + params);
         return "Module " + params + " unloaded";
     });
     
-    // ===== 执行 Lua =====
-    REGISTER_COMMAND("exec_lua", {
-        bridge.sendLog("INFO", "Exec Lua: " + params.substr(0, 80));
-        bool ok = bridge.execLua(params);
+    bridge.registerCommand("exec_lua", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Exec Lua: " + params.substr(0, 80));
+        bool ok = BridgeServer::getInstance().execLua(params);
         return ok ? "Lua executed" : "Lua execution failed";
     });
     
-    // ===== 冰原巨兽 =====
-    REGISTER_COMMAND("initbattle", {
-        bridge.sendLog("INFO", "初始化冰原巨兽");
+    bridge.registerCommand("initbattle", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Battle init");
         return "Battle initialized";
     });
     
-    REGISTER_COMMAND("startbattle", {
-        bridge.sendLog("INFO", "▶ 启动冰原巨兽");
+    bridge.registerCommand("startbattle", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Battle started");
         return "Battle started";
     });
     
-    REGISTER_COMMAND("stopbattle", {
-        bridge.sendLog("INFO", "■ 停止冰原巨兽");
+    bridge.registerCommand("stopbattle", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Battle stopped");
         return "Battle stopped";
     });
     
-    REGISTER_COMMAND("searchboss", {
-        bridge.sendLog("INFO", "搜索Boss, 等级: " + params);
+    bridge.registerCommand("searchboss", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Search boss level " + params);
         return "Searching boss level " + params;
     });
     
-    // ===== 巨熊行动 =====
-    REGISTER_COMMAND("startauto", {
-        bridge.sendLog("INFO", "▶ 启动巨熊行动");
+    bridge.registerCommand("startauto", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Bear started");
         return "Auto bear started";
     });
     
-    REGISTER_COMMAND("stopauto", {
-        bridge.sendLog("INFO", "■ 停止巨熊行动");
+    bridge.registerCommand("stopauto", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Bear stopped");
         return "Auto bear stopped";
     });
     
-    REGISTER_COMMAND("createmarch", {
-        bridge.sendLog("INFO", "🚩 创建集结");
+    bridge.registerCommand("createmarch", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "March created");
         return "March created";
     });
     
-    REGISTER_COMMAND("addtargetuid", {
-        bridge.sendLog("INFO", "添加目标UID: " + params);
+    bridge.registerCommand("addtargetuid", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Add target: " + params);
         return "Target added: " + params;
     });
     
-    REGISTER_COMMAND("removetargetuid", {
-        bridge.sendLog("INFO", "移除目标UID: " + params);
+    bridge.registerCommand("removetargetuid", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Remove target: " + params);
         return "Target removed: " + params;
     });
     
-    REGISTER_COMMAND("gettargetuids", {
+    bridge.registerCommand("gettargetuids", [](const std::string& params) -> std::string {
         return "[]";
     });
     
-    // ===== 自动王城 =====
-    REGISTER_COMMAND("attackinit", {
-        bridge.sendLog("INFO", "初始化王城攻击");
+    bridge.registerCommand("attackinit", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Attack init");
         return "Attack initialized";
     });
     
-    REGISTER_COMMAND("startautoattack", {
-        bridge.sendLog("INFO", "▶ 启动自动王城");
+    bridge.registerCommand("startautoattack", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Attack started");
         return "Auto attack started";
     });
     
-    REGISTER_COMMAND("stopautoattack", {
-        bridge.sendLog("INFO", "■ 停止自动王城");
+    bridge.registerCommand("stopautoattack", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Attack stopped");
         return "Auto attack stopped";
     });
     
-    // ===== 自动治疗 =====
-    REGISTER_COMMAND("healinit", {
-        bridge.sendLog("INFO", "初始化治疗");
+    bridge.registerCommand("healinit", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Heal init");
         return "Heal initialized";
     });
     
-    REGISTER_COMMAND("startautoheal", {
-        bridge.sendLog("INFO", "▶ 启动自动治疗, 数量: " + params);
+    bridge.registerCommand("startautoheal", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Heal started, count: " + params);
         return "Auto heal started, count: " + params;
     });
     
-    REGISTER_COMMAND("stopautoheal", {
-        bridge.sendLog("INFO", "■ 停止自动治疗");
+    bridge.registerCommand("stopautoheal", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Heal stopped");
         return "Auto heal stopped";
     });
     
-    // ===== 召唤Boss =====
-    REGISTER_COMMAND("starthunter", {
-        bridge.sendLog("INFO", "▶ 启动召唤Boss");
+    bridge.registerCommand("starthunter", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Hunter started");
         return "Hunter started";
     });
     
-    REGISTER_COMMAND("stophunter", {
-        bridge.sendLog("INFO", "■ 停止召唤Boss");
+    bridge.registerCommand("stophunter", [](const std::string& params) -> std::string {
+        BridgeServer::getInstance().sendLog("INFO", "Hunter stopped");
         return "Hunter stopped";
     });
     
-    REGISTER_COMMAND("dohunter", {
+    bridge.registerCommand("dohunter", [](const std::string& params) -> std::string {
         return "Hunting...";
     });
     
-    // ===== 日志拉取（用于 Web 控制台轮询）=====
-    REGISTER_COMMAND("logs", {
+    bridge.registerCommand("logs", [](const std::string& params) -> std::string {
         return "{\"logs\":[]}";
     });
     
-    bridge.sendLog("INFO", "All commands registered");
+    BridgeServer::getInstance().sendLog("INFO", "All commands registered");
 }
