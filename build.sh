@@ -25,7 +25,6 @@ armv7a-linux-androideabi${API}-clang++ -std=c++17 -fPIC -shared -O2 -fvisibility
 MODULE="game_helper_zygisk"
 rm -rf "$MODULE"
 
-# 目录结构
 mkdir -p "$MODULE/META-INF/com/google/android"
 mkdir -p "$MODULE/lib/arm64-v8a"
 mkdir -p "$MODULE/lib64/arm64-v8a"
@@ -57,9 +56,14 @@ echo "#MAGISK" > "$MODULE/META-INF/com/google/android/updater-script"
 
 # 复制文件
 cp module.prop "$MODULE/"
-cp "$OUTPUT/arm64-v8a/libgamehelper.so" "$MODULE/lib/arm64-v8a/arm64-v8a.so"
-cp "$OUTPUT/arm64-v8a/libgamehelper.so" "$MODULE/lib64/arm64-v8a/arm64-v8a.so"
-cp "$OUTPUT/armeabi-v7a/libgamehelper.so" "$MODULE/lib/armeabi-v7a/armeabi-v7a.so"
+cp "$OUTPUT/arm64-v8a/libgamehelper.so" "$MODULE/lib/arm64-v8a/libgamehelper.so"
+cp "$OUTPUT/arm64-v8a/libgamehelper.so" "$MODULE/lib64/arm64-v8a/libgamehelper.so"
+cp "$OUTPUT/armeabi-v7a/libgamehelper.so" "$MODULE/lib/armeabi-v7a/libgamehelper.so"
+
+# 设置权限
+chmod 755 "$MODULE/lib/arm64-v8a/libgamehelper.so"
+chmod 755 "$MODULE/lib64/arm64-v8a/libgamehelper.so"
+chmod 755 "$MODULE/lib/armeabi-v7a/libgamehelper.so"
 
 # 打包
 ZIP="game_helper_zygisk_v1.0.zip"
