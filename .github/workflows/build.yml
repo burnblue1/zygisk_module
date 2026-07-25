@@ -13,6 +13,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fix line endings
+        run: |
+          sed -i 's/\r$//' build.sh
+          sed -i 's/\r$//' customize.sh
+          sed -i 's/\r$//' post-fs-data.sh
+          sed -i 's/\r$//' module.prop
+
       - name: Setup NDK
         run: |
           wget -q https://dl.google.com/android/repository/android-ndk-r26d-linux.zip
@@ -22,7 +29,7 @@ jobs:
       - name: Build
         run: |
           chmod +x build.sh
-          ./build.sh
+          bash build.sh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
