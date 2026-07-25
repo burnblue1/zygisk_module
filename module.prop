@@ -2,5 +2,6 @@ id=game_helper
 name=Game Helper Zygisk
 version=v1.0
 versionCode=1
-author=admin
+author=burnblue
 description=Game injection via Zygisk, bridge on port 27042
+isZygiskModule=true
