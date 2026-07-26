@@ -123,3 +123,12 @@ extern "C" [[gnu::visibility("default")]] void zygisk_module_unload() {
     LOGI("Module unloaded");
     BridgeServer::getInstance().stop();
 }
+// 在文件末尾加上
+__attribute__((constructor))
+static void init_module() {
+    // ZygiskNext 加载 so 时自动调用
+    // 不能做重操作，只启动线程
+    pthread_t tid;
+    pthread_create(&tid, nullptr, injection_thread, nullptr);
+    pthread_detach(tid);
+}
