@@ -12,15 +12,17 @@
 #include <cstring>
 #include <ctime>
 
-
 #define TAG "GameHelper"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
+// 前向声明inline_hook，不再include头文件
+extern int inline_hook(void* target, void* replace, void** original);
+
 using android_dlopen_ext_t = void* (*)(const char*, int, const void*, const char*);
 static android_dlopen_ext_t orig_android_dlopen_ext = nullptr;
 
-// 只保留实际会调用的外部函数
+// 仅保留实际调用的外部函数
 extern void install_anti_detect();
 extern void hook_lua_functions(void* tolua_handle);
 
@@ -100,8 +102,7 @@ static void* injection_thread(void*)
 
     write_file_log("INJECT: thread start");
 
-    install_anti_detect();
-    write_file_log("INJECT: install_anti_detect done");
+
 
     void* libc_handle = dlopen("libc.so", RTLD_LAZY);
     if (libc_handle)
